@@ -36,8 +36,9 @@ chroot "${ROOTFS}" bash -c '
     systemctl enable docker
     systemctl enable containerd
 
-    # Add agentos user to docker group for sandbox execution
+    # Add agentos and human user to docker group for sandbox execution
     usermod -aG docker agentos
+    usermod -aG docker user
 '
 ok "Docker installed"
 

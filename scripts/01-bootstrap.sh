@@ -5,8 +5,6 @@
 #
 set -euo pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/../scripts/build-vm.sh" 2>/dev/null || true
-
 log "Bootstrapping Ubuntu ${UBUNTU_RELEASE} (${ARCH})..."
 
 # ── Create rootfs ──────────────────────────────────────────────────
@@ -97,11 +95,12 @@ chroot "${ROOTFS}" useradd \
     agentos
 
 # Create a default human user for desktop login
+# Note: docker group is added later in 02-install-deps.sh after Docker is installed
 chroot "${ROOTFS}" useradd \
     --uid 1000 \
     --create-home \
     --shell /bin/bash \
-    --groups sudo,docker \
+    --groups sudo \
     --comment "AgentOS User" \
     user
 

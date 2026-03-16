@@ -37,7 +37,8 @@ VBoxManage startvm agentos-lite
 ```bash
 git clone https://github.com/user/agentos.git
 cd agentos
-./scripts/build-vm.sh
+make validate   # Check config before building
+make build      # Build the Lite edition (requires Ubuntu 24.04 + sudo)
 ```
 
 The build script requires Ubuntu 24.04 as the host (or any Debian-based system with debootstrap).
@@ -81,12 +82,20 @@ agentos/
 │   ├── 03-configure.sh      # systemd units, AppArmor, users
 │   ├── 04-desktop.sh        # GNOME + branding (Lite only)
 │   ├── 05-wizard.sh         # First-run setup wizard
-│   └── 06-package.sh        # Export as OVA/QCOW2
+│   ├── 06-package.sh        # Export as OVA/QCOW2
+│   ├── validate.sh          # Pre-build validation checks
+│   └── smoke-test.sh        # Post-build rootfs verification
 ├── config/
-│   ├── apparmor/             # AppArmor profiles
-│   ├── systemd/              # Service unit files
-│   └── openclaw/             # Default OpenClaw config
-├── branding/                 # Plymouth theme, wallpaper, icons
+│   ├── apparmor/
+│   │   └── agentos-openclaw # AppArmor confinement profile
+│   ├── systemd/
+│   │   ├── agentos-gateway.service
+│   │   └── agentos-broker.service
+│   └── openclaw/
+│       ├── openclaw.defaults.json  # Default agent config
+│       └── env.template            # Environment variable template
+├── Makefile                  # Build convenience targets
+├── branding/                 # Plymouth theme, wallpaper, icons (Phase 4)
 ├── docs/                     # User-facing documentation
 └── README.md
 ```
@@ -104,7 +113,7 @@ AgentOS follows the principle of **least privilege for autonomous agents**:
 ## Roadmap
 
 - [x] Project scaffold and build scripts
-- [ ] Phase 1: Bootable VM image with OpenClaw pre-configured
+- [x] Phase 1: Bootable VM image with OpenClaw pre-configured
 - [ ] Phase 2: AppArmor + credential vault + audit logging
 - [ ] Phase 3: First-run setup wizard with channel pairing
 - [ ] Phase 4: Branding (Plymouth, GRUB, wallpaper, welcome app)

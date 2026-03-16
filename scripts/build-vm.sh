@@ -127,6 +127,11 @@ main() {
     fi
 
     run_phase "05" "wizard"
+
+    # Run smoke tests before packaging
+    log "Running smoke tests on rootfs..."
+    bash "${SCRIPT_DIR}/smoke-test.sh" "${ROOTFS}"
+
     run_phase "06" "package"
 
     echo ""

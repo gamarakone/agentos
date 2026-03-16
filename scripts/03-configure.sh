@@ -8,56 +8,9 @@ set -euo pipefail
 log "Configuring system services..."
 
 # ── systemd service for OpenClaw Gateway ───────────────────────────
-log "Creating OpenClaw gateway systemd service..."
-cat > "${ROOTFS}/etc/systemd/system/agentos-gateway.service" <<'EOF'
-[Unit]
-Description=AgentOS OpenClaw Gateway
-Documentation=https://docs.openclaw.ai
-After=network-online.target docker.service
-Wants=network-online.target
-Requires=docker.service
-
-[Service]
-Type=simple
-User=agentos
-Group=agentos
-WorkingDirectory=/home/agentos/workspace
-
-# Load credentials from vault via broker
-EnvironmentFile=-/etc/agentos/env
-
-# Start the OpenClaw gateway
-ExecStart=/usr/bin/node /usr/lib/node_modules/openclaw/dist/index.js gateway --port 18789
-ExecReload=/bin/kill -USR1 $MAINPID
-
-# Restart policy
-Restart=on-failure
-RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
-
-# Security hardening
-NoNewPrivileges=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/home/agentos /var/log/agentos /tmp
-PrivateTmp=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
-RestrictNamespaces=yes
-RestrictRealtime=yes
-MemoryDenyWriteExecute=no
-LockPersonality=yes
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=agentos-gateway
-
-[Install]
-WantedBy=multi-user.target
-EOF
+log "Installing OpenClaw gateway systemd service..."
+cp "${PROJECT_ROOT}/config/systemd/agentos-gateway.service" \
+   "${ROOTFS}/etc/systemd/system/agentos-gateway.service"
 
 # ── Credential broker service ──────────────────────────────────────
 log "Creating credential broker..."
@@ -131,79 +84,13 @@ chroot "${ROOTFS}" chmod +x /opt/agentos/bin/credential-broker.sh
 chroot "${ROOTFS}" chmod +x /opt/agentos/bin/credential-handler.sh
 
 # Broker systemd service
-cat > "${ROOTFS}/etc/systemd/system/agentos-broker.service" <<'EOF'
-[Unit]
-Description=AgentOS Credential Broker
-Before=agentos-gateway.service
-
-[Service]
-Type=simple
-ExecStart=/opt/agentos/bin/credential-broker.sh
-Restart=on-failure
-User=root
-Group=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
+cp "${PROJECT_ROOT}/config/systemd/agentos-broker.service" \
+   "${ROOTFS}/etc/systemd/system/agentos-broker.service"
 
 # ── AppArmor profile for OpenClaw ──────────────────────────────────
-log "Creating AppArmor profile..."
-cat > "${ROOTFS}/etc/apparmor.d/agentos-openclaw" <<'APPARMOR'
-#include <tunables/global>
-
-profile agentos-openclaw /usr/bin/node flags=(enforce) {
-  #include <abstractions/base>
-  #include <abstractions/nameservice>
-  #include <abstractions/ssl_certs>
-
-  # Node.js binary and libraries
-  /usr/bin/node ix,
-  /usr/lib/node_modules/** r,
-  /usr/lib/node_modules/openclaw/** r,
-
-  # OpenClaw workspace (read/write)
-  /home/agentos/ r,
-  /home/agentos/** rw,
-  /home/agentos/workspace/** rwk,
-  /home/agentos/.openclaw/** rw,
-
-  # Logging
-  /var/log/agentos/** rw,
-
-  # Temp files
-  /tmp/** rw,
-  /tmp/ r,
-
-  # Network access (required for LLM APIs and messaging)
-  network inet stream,
-  network inet dgram,
-  network inet6 stream,
-  network inet6 dgram,
-  network unix stream,
-
-  # Credential broker socket (read-only access)
-  /run/agentos/credentials.sock rw,
-
-  # DENY access to sensitive system areas
-  deny /etc/agentos/vault/** rw,
-  deny /etc/shadow r,
-  deny /etc/passwd w,
-  deny /etc/sudoers* rw,
-  deny /root/** rw,
-  deny /boot/** rw,
-  deny /usr/sbin/** x,
-
-  # Allow Docker socket for sandbox execution
-  /var/run/docker.sock rw,
-
-  # Proc and sys (limited)
-  /proc/*/status r,
-  /proc/meminfo r,
-  /proc/cpuinfo r,
-  /sys/devices/system/cpu/** r,
-}
-APPARMOR
+log "Installing AppArmor profile..."
+cp "${PROJECT_ROOT}/config/apparmor/agentos-openclaw" \
+   "${ROOTFS}/etc/apparmor.d/agentos-openclaw"
 
 # ── Audit logging configuration ───────────────────────────────────
 log "Configuring audit logging..."
@@ -220,28 +107,12 @@ cat > "${ROOTFS}/etc/audit/rules.d/agentos.rules" <<'AUDIT'
 -a always,exit -F arch=b64 -F uid=1100 -S connect -k agentos-network
 AUDIT
 
-# ── Environment file template ──────────────────────────────────────
-log "Creating environment file template..."
-cat > "${ROOTFS}/etc/agentos/env" <<'ENV'
-# AgentOS Environment Configuration
-# This file is managed by the setup wizard and owned by root.
-# The agentos service user cannot modify this file.
-#
-# Model provider (set during first-run wizard)
-# ANTHROPIC_API_KEY=
-# OPENAI_API_KEY=
-# OPENROUTER_API_KEY=
-#
-# Gateway configuration
-OPENCLAW_GATEWAY_PORT=18789
-OPENCLAW_GATEWAY_AUTH=token
-OPENCLAW_HOME=/home/agentos/.openclaw
-OPENCLAW_WORKSPACE=/home/agentos/workspace
-#
-# Security
-OPENCLAW_SANDBOX=docker
-OPENCLAW_EXECUTION_POLICY=ask
-ENV
+# ── Environment file and default OpenClaw config ──────────────────
+log "Installing environment template and default config..."
+cp "${PROJECT_ROOT}/config/openclaw/env.template" "${ROOTFS}/etc/agentos/env"
+cp "${PROJECT_ROOT}/config/openclaw/openclaw.defaults.json" \
+   "${ROOTFS}/home/agentos/.openclaw/openclaw.json"
+chroot "${ROOTFS}" chown agentos:agentos /home/agentos/.openclaw/openclaw.json
 
 chroot "${ROOTFS}" chmod 600 /etc/agentos/env
 

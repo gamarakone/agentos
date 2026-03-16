@@ -1,0 +1,47 @@
+[Unit]
+Description=AgentOS OpenClaw Gateway
+Documentation=https://docs.openclaw.ai
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=agentos
+Group=agentos
+WorkingDirectory=/home/agentos/workspace
+
+# Load credentials from vault via broker
+EnvironmentFile=-/etc/agentos/env
+
+# Start the OpenClaw gateway
+ExecStart=/usr/bin/node /usr/lib/node_modules/openclaw/dist/index.js gateway --port 18789
+ExecReload=/bin/kill -USR1 $MAINPID
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/agentos /var/log/agentos /tmp
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+MemoryDenyWriteExecute=no
+LockPersonality=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agentos-gateway
+
+[Install]
+WantedBy=multi-user.target

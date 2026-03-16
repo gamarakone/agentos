@@ -1,0 +1,13 @@
+[Unit]
+Description=AgentOS Credential Broker
+Before=agentos-gateway.service
+
+[Service]
+Type=simple
+ExecStart=/opt/agentos/bin/credential-broker.sh
+Restart=on-failure
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

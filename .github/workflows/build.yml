@@ -34,10 +34,18 @@ jobs:
             grub-pc-bin \
             squashfs-tools
 
-      - name: Build VM image
+      - name: Validate build config
         run: |
           chmod +x scripts/*.sh
+          ./scripts/validate.sh
+
+      - name: Build VM image
+        run: |
           sudo ./scripts/build-vm.sh --lite
+
+      - name: Run smoke tests
+        run: |
+          sudo ./scripts/smoke-test.sh /tmp/agentos-build/rootfs
 
       - name: Upload QCOW2 artifact
         uses: actions/upload-artifact@v4
