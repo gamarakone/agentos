@@ -1,0 +1,11 @@
+*.ova
+*.qcow2
+*.vmdk
+*.raw
+*.iso
+*.img
+/build/
+/output/
+*.log
+.DS_Store
+node_modules/

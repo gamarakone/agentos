@@ -1,0 +1,110 @@
+name: Build AgentOS VM Image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  VM_NAME: agentos-lite
+  UBUNTU_RELEASE: noble
+
+jobs:
+  build:
+    name: Build VM Image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debootstrap \
+            qemu-utils \
+            parted \
+            rsync \
+            dosfstools \
+            grub-pc-bin \
+            squashfs-tools
+
+      - name: Build VM image
+        run: |
+          chmod +x scripts/*.sh
+          sudo ./scripts/build-vm.sh --lite
+
+      - name: Upload QCOW2 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.VM_NAME }}-qcow2
+          path: /tmp/agentos-build/output/${{ env.VM_NAME }}.qcow2
+          compression-level: 0  # Already compressed
+
+      - name: Upload OVA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.VM_NAME }}-ova
+          path: /tmp/agentos-build/output/${{ env.VM_NAME }}.ova
+          compression-level: 0
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: /tmp/agentos-build/output/SHA256SUMS
+
+  release:
+    name: Create Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/${{ env.VM_NAME }}-qcow2/${{ env.VM_NAME }}.qcow2
+            artifacts/${{ env.VM_NAME }}-ova/${{ env.VM_NAME }}.ova
+            artifacts/checksums/SHA256SUMS
+          body: |
+            ## AgentOS ${{ github.ref_name }}
+
+            Ubuntu-based VM image with OpenClaw pre-configured for AI automation.
+
+            ### Quick start
+            ```bash
+            # VirtualBox
+            VBoxManage import agentos-lite.ova
+            VBoxManage startvm agentos-lite
+
+            # QEMU/KVM
+            qemu-system-x86_64 -hda agentos-lite.qcow2 -m 4096 -enable-kvm
+            ```
+
+            ### Default credentials
+            - Username: `user`
+            - Password: `agentos` (you'll be prompted to change on first login)
+
+            ### What's included
+            - Ubuntu 24.04 LTS (Noble Numbat)
+            - OpenClaw agent framework (latest)
+            - Node.js 22 + Docker
+            - GNOME desktop (Lite edition)
+            - AppArmor security profiles
+            - First-run setup wizard
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}

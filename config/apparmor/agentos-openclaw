@@ -1,0 +1,61 @@
+# AppArmor profile for AgentOS OpenClaw agent
+# This profile is installed by 03-configure.sh into the rootfs.
+# To reload after editing: sudo apparmor_parser -r /etc/apparmor.d/agentos-openclaw
+
+#include <tunables/global>
+
+profile agentos-openclaw /usr/bin/node flags=(enforce) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/ssl_certs>
+
+  # ── Node.js runtime ──────────────────────────────────────────
+  /usr/bin/node ix,
+  /usr/lib/node_modules/** r,
+  /usr/lib/node_modules/openclaw/** r,
+
+  # ── Agent workspace (full access) ────────────────────────────
+  /home/agentos/ r,
+  /home/agentos/** rw,
+  /home/agentos/workspace/** rwk,
+  /home/agentos/.openclaw/** rw,
+
+  # ── Skills directory ─────────────────────────────────────────
+  /opt/agentos/skills/** r,
+
+  # ── Logging ──────────────────────────────────────────────────
+  /var/log/agentos/** rw,
+
+  # ── Temp ─────────────────────────────────────────────────────
+  /tmp/** rw,
+  /tmp/ r,
+
+  # ── Network (LLM APIs, messaging gateways) ───────────────────
+  network inet stream,
+  network inet dgram,
+  network inet6 stream,
+  network inet6 dgram,
+  network unix stream,
+
+  # ── Credential broker (read-only via socket) ─────────────────
+  /run/agentos/credentials.sock rw,
+
+  # ── Docker socket (for sandbox execution) ────────────────────
+  /var/run/docker.sock rw,
+
+  # ── System info (read-only) ──────────────────────────────────
+  /proc/*/status r,
+  /proc/meminfo r,
+  /proc/cpuinfo r,
+  /sys/devices/system/cpu/** r,
+
+  # ── DENY: sensitive system areas ─────────────────────────────
+  deny /etc/agentos/vault/** rw,
+  deny /etc/shadow r,
+  deny /etc/passwd w,
+  deny /etc/sudoers* rw,
+  deny /root/** rw,
+  deny /boot/** rw,
+  deny /usr/sbin/** x,
+  deny /etc/agentos/env rw,
+}
