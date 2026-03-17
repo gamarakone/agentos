@@ -26,7 +26,7 @@ AgentOS is a pre-configured VM image (OVA/QCOW2) that turns any virtualization p
 ### Option 1: VirtualBox / UTM / VMware
 ```bash
 # Download the latest OVA
-curl -LO https://github.com/user/agentos/releases/latest/download/agentos-lite.ova
+curl -LO https://github.com/SecureAgentOS/agentos/releases/latest/download/agentos-lite.ova
 
 # Import into VirtualBox
 VBoxManage import agentos-lite.ova
@@ -35,7 +35,7 @@ VBoxManage startvm agentos-lite
 
 ### Option 2: Build from scratch
 ```bash
-git clone https://github.com/user/agentos.git
+git clone https://github.com/SecureAgentOS/agentos.git
 cd agentos
 make validate   # Check config before building
 make build      # Build the Lite edition (requires Ubuntu 24.04 + sudo)

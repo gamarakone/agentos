@@ -155,8 +155,8 @@ VERSION_ID="${AGENTOS_VERSION}"
 VERSION="${AGENTOS_VERSION} (Pioneer)"
 ID=agentos
 ID_LIKE=ubuntu debian
-HOME_URL="https://github.com/user/agentos"
-BUG_REPORT_URL="https://github.com/user/agentos/issues"
+HOME_URL="https://github.com/SecureAgentOS/agentos"
+BUG_REPORT_URL="https://github.com/SecureAgentOS/agentos/issues"
 UBUNTU_CODENAME=${UBUNTU_RELEASE}
 EOF
 
