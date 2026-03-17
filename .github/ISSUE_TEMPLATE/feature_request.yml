@@ -1,0 +1,57 @@
+name: Feature Request
+description: Suggest an improvement or new capability
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Please describe it clearly.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Build system
+        - Security / AppArmor
+        - OpenClaw integration
+        - Credential vault
+        - Desktop / GNOME
+        - Setup wizard
+        - Server edition
+        - Dev edition
+        - Documentation
+        - CI/CD
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this solve? Why is it needed?
+      placeholder: "Currently there's no way to rotate API keys stored in the vault without manually editing files..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: What would you like to see added or changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to submit a PR for this
