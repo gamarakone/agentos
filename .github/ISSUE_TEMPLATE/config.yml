@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/SecureAgentOS/agentos/security/advisories/new
+    about: Please report security issues privately using GitHub's vulnerability reporting.
+  - name: Question / Discussion
+    url: https://github.com/SecureAgentOS/agentos/discussions
+    about: For questions and general discussion, use GitHub Discussions.
