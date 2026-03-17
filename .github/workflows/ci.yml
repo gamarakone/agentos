@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run validation suite
+        run: make validate
+
+  lint-shell:
+    name: Shell Lint (shellcheck)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint all shell scripts
+        run: |
+          find scripts/ -name "*.sh" -print0 | xargs -0 shellcheck --severity=warning
+
+  lint-config:
+    name: Validate Config Files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate OpenClaw JSON config
+        run: |
+          find config/openclaw/ -name "*.json" -print0 | \
+            xargs -0 -I{} python3 -m json.tool {} /dev/null
+
+      - name: Check systemd unit files
+        run: |
+          for f in config/systemd/*.service; do
+            echo "Checking $f"
+            grep -q '\[Unit\]'    "$f" || { echo "FAIL: missing [Unit] in $f";    exit 1; }
+            grep -q '\[Service\]' "$f" || { echo "FAIL: missing [Service] in $f"; exit 1; }
+            grep -q '\[Install\]' "$f" || { echo "FAIL: missing [Install] in $f"; exit 1; }
+          done
+
+      - name: Check AppArmor profile
+        run: |
+          profile="config/apparmor/agentos-openclaw"
+          grep -q 'deny' "$profile"        || { echo "FAIL: AppArmor profile missing deny rules"; exit 1; }
+          grep -q 'vault' "$profile"       || { echo "FAIL: AppArmor profile missing vault reference"; exit 1; }
