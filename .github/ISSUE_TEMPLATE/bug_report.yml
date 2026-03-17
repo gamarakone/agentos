@@ -1,0 +1,75 @@
+name: Bug Report
+description: Something isn't working correctly
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill this out as completely as possible.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of AgentOS is affected?
+      options:
+        - Build process
+        - Bootstrap / OS setup
+        - OpenClaw / agent service
+        - Credential vault / broker
+        - AppArmor / security
+        - Desktop / GNOME
+        - Setup wizard
+        - Networking
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+      placeholder: "When I run `make build`, the script fails at step 03-configure.sh with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Clone the repo
+        2. Run `make build`
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Paste build output, journal logs, or audit logs here.
+      render: shell
+
+  - type: input
+    id: host-os
+    attributes:
+      label: Host OS
+      placeholder: "Ubuntu 24.04.1 LTS"
+    validations:
+      required: true
+
+  - type: input
+    id: hypervisor
+    attributes:
+      label: Hypervisor (if running the built VM)
+      placeholder: "VirtualBox 7.0 / VMware Fusion 13 / UTM 4.x / N/A"
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or Tag
+      placeholder: "main @ abc1234 / v0.1.0"
+    validations:
+      required: true
