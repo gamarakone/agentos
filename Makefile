@@ -9,7 +9,7 @@ SHELL := /bin/bash
 BUILD_DIR ?= /tmp/agentos-build
 OUTPUT_DIR ?= $(BUILD_DIR)/output
 
-.PHONY: build build-lite build-server validate clean help
+.PHONY: build build-lite build-server validate clean help test test-shell test-clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -38,6 +38,18 @@ clean: ## Remove build artifacts from BUILD_DIR
 		sudo rm -rf "$(BUILD_DIR)"; \
 	fi
 	@echo "Clean complete."
+
+test: ## Test build in Docker (no Ubuntu host required)
+	@./scripts/test-docker.sh
+
+test-full: ## Test build in Docker including desktop (slow)
+	@./scripts/test-docker.sh --with-desktop
+
+test-shell: ## Test build then drop into container shell for inspection
+	@./scripts/test-docker.sh --shell
+
+test-clean: ## Remove test containers and images
+	@./scripts/test-docker.sh --clean
 
 list-output: ## List built artifacts
 	@if [ -d "$(OUTPUT_DIR)" ]; then \
