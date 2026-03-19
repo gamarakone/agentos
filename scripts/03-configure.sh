@@ -87,25 +87,36 @@ chroot "${ROOTFS}" chmod +x /opt/agentos/bin/credential-handler.sh
 cp "${PROJECT_ROOT}/config/systemd/agentos-broker.service" \
    "${ROOTFS}/etc/systemd/system/agentos-broker.service"
 
-# ── AppArmor profile for OpenClaw ──────────────────────────────────
-log "Installing AppArmor profile..."
+# ── AppArmor profiles ─────────────────────────────────────────────
+log "Installing AppArmor profiles..."
 cp "${PROJECT_ROOT}/config/apparmor/agentos-openclaw" \
    "${ROOTFS}/etc/apparmor.d/agentos-openclaw"
+cp "${PROJECT_ROOT}/config/apparmor/agentos-broker" \
+   "${ROOTFS}/etc/apparmor.d/agentos-broker"
 
 # ── Audit logging configuration ───────────────────────────────────
-log "Configuring audit logging..."
-cat > "${ROOTFS}/etc/audit/rules.d/agentos.rules" <<'AUDIT'
-# AgentOS audit rules
-# Log all commands executed by the agentos user (uid 1100)
--a always,exit -F arch=b64 -F uid=1100 -S execve -k agentos-exec
+log "Installing audit rules..."
+cp "${PROJECT_ROOT}/config/audit/agentos.rules" \
+   "${ROOTFS}/etc/audit/rules.d/agentos.rules"
 
-# Log file writes in sensitive directories
--w /etc/agentos/ -p wa -k agentos-config
--w /home/agentos/.openclaw/ -p wa -k agentos-openclaw
+# ── Log rotation ──────────────────────────────────────────────────
+log "Installing logrotate configuration..."
+cp "${PROJECT_ROOT}/config/logrotate/agentos" \
+   "${ROOTFS}/etc/logrotate.d/agentos"
 
-# Log network connections by agentos user
--a always,exit -F arch=b64 -F uid=1100 -S connect -k agentos-network
-AUDIT
+# ── Vault management CLI ─────────────────────────────────────────
+log "Installing vault management CLI..."
+cp "${PROJECT_ROOT}/scripts/agentos-vault.sh" \
+   "${ROOTFS}/opt/agentos/bin/agentos-vault"
+chroot "${ROOTFS}" chmod +x /opt/agentos/bin/agentos-vault
+chroot "${ROOTFS}" ln -sf /opt/agentos/bin/agentos-vault /usr/local/bin/agentos-vault
+
+# ── Audit query CLI ──────────────────────────────────────────────
+log "Installing audit query CLI..."
+cp "${PROJECT_ROOT}/scripts/agentos-audit.sh" \
+   "${ROOTFS}/opt/agentos/bin/agentos-audit"
+chroot "${ROOTFS}" chmod +x /opt/agentos/bin/agentos-audit
+chroot "${ROOTFS}" ln -sf /opt/agentos/bin/agentos-audit /usr/local/bin/agentos-audit
 
 # ── Environment file and default OpenClaw config ──────────────────
 log "Installing environment template and default config..."

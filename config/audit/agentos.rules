@@ -1,0 +1,40 @@
+# AgentOS Audit Rules
+# Comprehensive auditing for the agentos service user (uid 1100)
+# Installed to /etc/audit/rules.d/agentos.rules
+
+# ── Command execution ─────────────────────────────────────────────
+# Log all commands executed by the agentos user
+-a always,exit -F arch=b64 -F uid=1100 -S execve -k agentos-exec
+-a always,exit -F arch=b32 -F uid=1100 -S execve -k agentos-exec
+
+# ── File access in sensitive areas ────────────────────────────────
+# Vault access attempts (should be denied by AppArmor, but log anyway)
+-w /etc/agentos/vault/ -p rwxa -k agentos-vault-access
+
+# Config file changes
+-w /etc/agentos/ -p wa -k agentos-config
+-w /home/agentos/.openclaw/ -p wa -k agentos-openclaw-config
+
+# ── Network connections ───────────────────────────────────────────
+# Log outbound connections by agentos user (API calls, messaging)
+-a always,exit -F arch=b64 -F uid=1100 -S connect -k agentos-network
+-a always,exit -F arch=b64 -F uid=1100 -S bind -k agentos-network
+-a always,exit -F arch=b64 -F uid=1100 -S accept -k agentos-network
+
+# ── Privilege escalation attempts ─────────────────────────────────
+# Log any attempts to change user/group identity
+-a always,exit -F arch=b64 -F uid=1100 -S setuid -k agentos-priv-escalation
+-a always,exit -F arch=b64 -F uid=1100 -S setgid -k agentos-priv-escalation
+-a always,exit -F arch=b64 -F uid=1100 -S setreuid -k agentos-priv-escalation
+-a always,exit -F arch=b64 -F uid=1100 -S setregid -k agentos-priv-escalation
+
+# ── Docker socket access ─────────────────────────────────────────
+-w /var/run/docker.sock -p rwxa -k agentos-docker
+
+# ── Credential broker socket ─────────────────────────────────────
+-w /run/agentos/credentials.sock -p rwxa -k agentos-credential-request
+
+# ── System file modification attempts ────────────────────────────
+# These should be blocked by AppArmor but we log attempts for alerting
+-a always,exit -F arch=b64 -F uid=1100 -S open -F dir=/etc -F perm=wa -k agentos-system-write
+-a always,exit -F arch=b64 -F uid=1100 -S openat -F dir=/etc -F perm=wa -k agentos-system-write

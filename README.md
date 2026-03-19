@@ -87,10 +87,15 @@ agentos/
 │   └── smoke-test.sh        # Post-build rootfs verification
 ├── config/
 │   ├── apparmor/
-│   │   └── agentos-openclaw # AppArmor confinement profile
+│   │   ├── agentos-openclaw       # AppArmor profile for OpenClaw agent
+│   │   └── agentos-broker         # AppArmor profile for credential broker
 │   ├── systemd/
 │   │   ├── agentos-gateway.service
 │   │   └── agentos-broker.service
+│   ├── audit/
+│   │   └── agentos.rules          # auditd rules for agent activity
+│   ├── logrotate/
+│   │   └── agentos                # Log rotation policy
 │   └── openclaw/
 │       ├── openclaw.defaults.json  # Default agent config
 │       └── env.template            # Environment variable template
@@ -114,7 +119,7 @@ AgentOS follows the principle of **least privilege for autonomous agents**:
 
 - [x] Project scaffold and build scripts
 - [x] Phase 1: Bootable VM image with OpenClaw pre-configured
-- [ ] Phase 2: AppArmor + credential vault + audit logging
+- [x] Phase 2: AppArmor + credential vault + audit logging
 - [ ] Phase 3: First-run setup wizard with channel pairing
 - [ ] Phase 4: Branding (Plymouth, GRUB, wallpaper, welcome app)
 - [ ] Phase 5: Server edition (headless, no desktop)

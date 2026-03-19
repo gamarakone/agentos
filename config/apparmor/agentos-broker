@@ -1,0 +1,51 @@
+# AppArmor profile for AgentOS Credential Broker
+# The broker runs as root and serves secrets from the vault over a Unix socket.
+# It must be tightly confined to vault reads, socket I/O, and logging only.
+#
+# To reload: sudo apparmor_parser -r /etc/apparmor.d/agentos-broker
+
+#include <tunables/global>
+
+profile agentos-broker /opt/agentos/bin/credential-broker.sh flags=(enforce) {
+  #include <abstractions/base>
+  #include <abstractions/bash>
+
+  # ── Shell and utilities needed by the broker ────────────────────
+  /usr/bin/bash ix,
+  /usr/bin/socat ix,
+  /usr/bin/date ix,
+  /usr/bin/rm ix,
+  /usr/bin/mkdir ix,
+  /usr/bin/cat ix,
+  /usr/bin/tr ix,
+  /usr/bin/echo ix,
+
+  # ── Credential handler script ──────────────────────────────────
+  /opt/agentos/bin/credential-handler.sh ix,
+
+  # ── Vault access (read-only) ───────────────────────────────────
+  /etc/agentos/vault/ r,
+  /etc/agentos/vault/** r,
+
+  # ── Unix socket for serving credentials ────────────────────────
+  /run/agentos/ rw,
+  /run/agentos/credentials.sock rw,
+
+  # ── Logging ────────────────────────────────────────────────────
+  /var/log/agentos/ r,
+  /var/log/agentos/broker.log rw,
+  /var/log/agentos/audit.log rw,
+
+  # ── DENY: everything else sensitive ────────────────────────────
+  deny /etc/agentos/env rw,
+  deny /home/** rw,
+  deny /root/** rw,
+  deny /boot/** rw,
+  deny /usr/sbin/** x,
+
+  # No network access — broker is local-only via Unix socket
+  deny network inet stream,
+  deny network inet dgram,
+  deny network inet6 stream,
+  deny network inet6 dgram,
+}

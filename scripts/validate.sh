@@ -46,10 +46,13 @@ echo ""
 echo "Configuration files:"
 for cfg in \
     config/apparmor/agentos-openclaw \
+    config/apparmor/agentos-broker \
     config/systemd/agentos-gateway.service \
     config/systemd/agentos-broker.service \
     config/openclaw/openclaw.defaults.json \
-    config/openclaw/env.template; do
+    config/openclaw/env.template \
+    config/audit/agentos.rules \
+    config/logrotate/agentos; do
     if [[ -f "${PROJECT_ROOT}/${cfg}" ]]; then
         pass "$cfg"
     else
@@ -103,23 +106,81 @@ done
 echo ""
 
 # ── Verify AppArmor profile structure ─────────────────────────────
-echo "AppArmor profile:"
+echo "AppArmor profiles:"
 apparmor="${PROJECT_ROOT}/config/apparmor/agentos-openclaw"
 if grep -q 'profile agentos-openclaw' "$apparmor"; then
-    pass "Profile name defined"
+    pass "OpenClaw profile name defined"
 else
-    fail "Profile name not found"
+    fail "OpenClaw profile name not found"
 fi
 if grep -q 'deny /etc/agentos/vault' "$apparmor"; then
-    pass "Vault access denied"
+    pass "Vault access denied in OpenClaw profile"
 else
-    fail "Vault deny rule missing"
+    fail "Vault deny rule missing in OpenClaw profile"
 fi
 if grep -q 'deny /etc/shadow' "$apparmor"; then
     pass "Shadow file access denied"
 else
     fail "Shadow deny rule missing"
 fi
+
+broker_apparmor="${PROJECT_ROOT}/config/apparmor/agentos-broker"
+if grep -q 'profile agentos-broker' "$broker_apparmor"; then
+    pass "Broker profile name defined"
+else
+    fail "Broker profile name not found"
+fi
+if grep -q 'deny network inet' "$broker_apparmor"; then
+    pass "Broker network access denied (local-only)"
+else
+    fail "Broker should deny network access"
+fi
+if grep -q '/etc/agentos/vault/' "$broker_apparmor"; then
+    pass "Broker has vault read access"
+else
+    fail "Broker missing vault access"
+fi
+echo ""
+
+# ── Verify audit rules ───────────────────────────────────────────
+echo "Audit rules:"
+audit_rules="${PROJECT_ROOT}/config/audit/agentos.rules"
+if grep -q 'agentos-exec' "$audit_rules"; then
+    pass "Command execution auditing"
+else
+    fail "Missing exec audit rule"
+fi
+if grep -q 'agentos-vault-access' "$audit_rules"; then
+    pass "Vault access auditing"
+else
+    fail "Missing vault access audit rule"
+fi
+if grep -q 'agentos-priv-escalation' "$audit_rules"; then
+    pass "Privilege escalation auditing"
+else
+    fail "Missing privilege escalation audit rule"
+fi
+if grep -q 'agentos-docker' "$audit_rules"; then
+    pass "Docker socket auditing"
+else
+    fail "Missing Docker audit rule"
+fi
+echo ""
+
+# ── Verify CLI tools ─────────────────────────────────────────────
+echo "CLI tools:"
+for tool in agentos-vault.sh agentos-audit.sh; do
+    if [[ -f "${SCRIPT_DIR}/${tool}" ]]; then
+        pass "$tool exists"
+        if [[ -x "${SCRIPT_DIR}/${tool}" ]]; then
+            pass "$tool is executable"
+        else
+            fail "$tool is not executable"
+        fi
+    else
+        fail "$tool missing"
+    fi
+done
 echo ""
 
 # ── Check CI workflow ──────────────────────────────────────────────

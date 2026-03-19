@@ -88,17 +88,34 @@ for svc in agentos-gateway agentos-broker; do
 done
 echo ""
 
-# ── AppArmor profile ─────────────────────────────────────────────
+# ── AppArmor profiles ────────────────────────────────────────────
 echo "Security:"
 if [[ -f "${ROOTFS}/etc/apparmor.d/agentos-openclaw" ]]; then
-    pass "AppArmor profile installed"
+    pass "AppArmor OpenClaw profile installed"
 else
-    fail "AppArmor profile missing"
+    fail "AppArmor OpenClaw profile missing"
+fi
+if [[ -f "${ROOTFS}/etc/apparmor.d/agentos-broker" ]]; then
+    pass "AppArmor broker profile installed"
+else
+    fail "AppArmor broker profile missing"
 fi
 if [[ -f "${ROOTFS}/etc/audit/rules.d/agentos.rules" ]]; then
     pass "Audit rules installed"
+    # Verify comprehensive coverage
+    rule_count=$(grep -c '^-' "${ROOTFS}/etc/audit/rules.d/agentos.rules" 2>/dev/null || echo 0)
+    if [[ "$rule_count" -ge 10 ]]; then
+        pass "Audit rules comprehensive (${rule_count} rules)"
+    else
+        fail "Audit rules incomplete (${rule_count} rules, expected >= 10)"
+    fi
 else
     fail "Audit rules missing"
+fi
+if [[ -f "${ROOTFS}/etc/logrotate.d/agentos" ]]; then
+    pass "Log rotation configured"
+else
+    fail "Log rotation config missing"
 fi
 echo ""
 
@@ -116,8 +133,8 @@ else
 fi
 echo ""
 
-# ── Credential broker ────────────────────────────────────────────
-echo "Credential broker:"
+# ── Credential broker and vault CLI ──────────────────────────────
+echo "Credential management:"
 if [[ -f "${ROOTFS}/opt/agentos/bin/credential-broker.sh" ]]; then
     pass "credential-broker.sh installed"
 else
@@ -127,6 +144,16 @@ if [[ -f "${ROOTFS}/opt/agentos/bin/credential-handler.sh" ]]; then
     pass "credential-handler.sh installed"
 else
     fail "credential-handler.sh missing"
+fi
+if [[ -f "${ROOTFS}/opt/agentos/bin/agentos-vault" ]]; then
+    pass "agentos-vault CLI installed"
+else
+    fail "agentos-vault CLI missing"
+fi
+if [[ -f "${ROOTFS}/opt/agentos/bin/agentos-audit" ]]; then
+    pass "agentos-audit CLI installed"
+else
+    fail "agentos-audit CLI missing"
 fi
 echo ""
 

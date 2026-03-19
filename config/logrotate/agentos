@@ -1,0 +1,28 @@
+# Logrotate configuration for AgentOS
+# Installed to /etc/logrotate.d/agentos
+
+/var/log/agentos/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 agentos agentos
+    sharedscripts
+    postrotate
+        # Signal the gateway to reopen log handles
+        systemctl kill -s USR1 agentos-gateway.service 2>/dev/null || true
+    endscript
+}
+
+/var/log/agentos/audit.log {
+    daily
+    rotate 90
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+    # Audit logs kept longer for compliance
+}
