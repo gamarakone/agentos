@@ -201,6 +201,27 @@ for ch in telegram discord slack; do
 done
 echo ""
 
+# ── Verify branding assets ────────────────────────────────────────
+echo "Branding:"
+for asset in \
+    branding/plymouth/agentos.plymouth \
+    branding/plymouth/agentos.script \
+    branding/plymouth/generate-assets.sh \
+    branding/grub/theme.txt \
+    branding/grub/generate-assets.sh \
+    branding/wallpapers/agentos-wallpaper.svg \
+    branding/wallpapers/agentos-wallpaper-dark.svg \
+    branding/icons/agentos-logo.svg \
+    branding/icons/favicon.svg \
+    branding/welcome/index.html; do
+    if [[ -f "${PROJECT_ROOT}/${asset}" ]]; then
+        pass "$asset"
+    else
+        fail "$asset missing"
+    fi
+done
+echo ""
+
 # ── Check CI workflow ──────────────────────────────────────────────
 echo "CI/CD:"
 if [[ -f "${PROJECT_ROOT}/.github/workflows/build.yml" ]]; then

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=AgentOS
+Description=AgentOS boot splash — dark theme with animated spinner
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/agentos
+ScriptFile=/usr/share/plymouth/themes/agentos/agentos.script

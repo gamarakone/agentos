@@ -68,7 +68,7 @@ EOF
 # Install GRUB
 chroot "${MOUNT_POINT}" grub-install --target=i386-pc "$LOOP_DEV"
 
-# Configure GRUB
+# Configure GRUB with AgentOS theme
 cat > "${MOUNT_POINT}/etc/default/grub" <<'GRUB'
 GRUB_DEFAULT=0
 GRUB_TIMEOUT=3
@@ -76,6 +76,7 @@ GRUB_DISTRIBUTOR="AgentOS"
 GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
 GRUB_CMDLINE_LINUX=""
 GRUB_DISABLE_OS_PROBER=true
+GRUB_THEME=/boot/grub/themes/agentos/theme.txt
 GRUB
 
 chroot "${MOUNT_POINT}" update-grub

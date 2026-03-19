@@ -190,6 +190,45 @@ else
 fi
 echo ""
 
+# ── Branding ──────────────────────────────────────────────────────
+echo "Branding:"
+if [[ -d "${ROOTFS}/usr/share/plymouth/themes/agentos" ]]; then
+    pass "Plymouth theme installed"
+else
+    fail "Plymouth theme missing"
+fi
+if [[ -d "${ROOTFS}/boot/grub/themes/agentos" ]]; then
+    pass "GRUB theme installed"
+    if [[ -f "${ROOTFS}/boot/grub/themes/agentos/theme.txt" ]]; then
+        pass "GRUB theme.txt present"
+    else
+        fail "GRUB theme.txt missing"
+    fi
+else
+    fail "GRUB theme missing"
+fi
+if [[ -f "${ROOTFS}/usr/share/backgrounds/agentos-wallpaper.svg" ]]; then
+    pass "Wallpapers installed"
+else
+    fail "Wallpapers missing"
+fi
+if [[ -f "${ROOTFS}/usr/share/icons/hicolor/scalable/apps/agentos.svg" ]]; then
+    pass "Application icon installed"
+else
+    fail "Application icon missing"
+fi
+if [[ -f "${ROOTFS}/opt/agentos/share/welcome/index.html" ]]; then
+    pass "Welcome app installed"
+else
+    fail "Welcome app missing"
+fi
+if [[ -f "${ROOTFS}/usr/share/applications/agentos-welcome.desktop" ]]; then
+    pass "Welcome desktop entry installed"
+else
+    fail "Welcome desktop entry missing"
+fi
+echo ""
+
 # ── Bootloader ────────────────────────────────────────────────────
 echo "Boot:"
 if [[ -d "${ROOTFS}/boot/grub" ]]; then

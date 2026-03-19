@@ -1,0 +1,65 @@
+# AgentOS GRUB Theme
+# Installed to /boot/grub/themes/agentos/
+
+title-text: ""
+desktop-color: "#0f0c29"
+desktop-image: "background.png"
+terminal-font: "DejaVu Sans Mono Regular 14"
+terminal-left: "10%"
+terminal-top: "20%"
+terminal-width: "80%"
+terminal-height: "60%"
+
++ boot_menu {
+    left = 25%
+    top = 30%
+    width = 50%
+    height = 50%
+    item_font = "DejaVu Sans Regular 16"
+    item_color = "#cccccc"
+    selected_item_font = "DejaVu Sans Bold 16"
+    selected_item_color = "#ffffff"
+    item_height = 36
+    item_padding = 8
+    item_spacing = 4
+    selected_item_pixmap_style = "select_*.png"
+    icon_width = 0
+    icon_height = 0
+    menu_pixmap_style = "menu_*.png"
+    scrollbar = true
+    scrollbar_width = 6
+    scrollbar_thumb = "scrollbar_thumb_*.png"
+}
+
++ label {
+    left = 50%-120
+    top = 18%
+    width = 240
+    height = 40
+    text = "AgentOS"
+    font = "DejaVu Sans Bold 28"
+    color = "#ffffff"
+    align = "center"
+}
+
++ label {
+    left = 50%-100
+    top = 24%
+    width = 200
+    height = 20
+    text = "Your AI, your machine"
+    font = "DejaVu Sans Regular 12"
+    color = "#666688"
+    align = "center"
+}
+
++ label {
+    left = 50%-160
+    top = 92%
+    width = 320
+    height = 20
+    text = "Use ↑↓ to select, Enter to boot"
+    font = "DejaVu Sans Regular 11"
+    color = "#555555"
+    align = "center"
+}

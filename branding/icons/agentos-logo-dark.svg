@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Same logo but on transparent background for dark contexts -->
+  <path d="M64 24 L36 104 L48 104 L54 84 L74 84 L80 104 L92 104 L64 24Z M58 72 L64 48 L70 72Z"
+        fill="#7c6ff7" opacity="0.95"/>
+  <circle cx="32" cy="32" r="3" fill="#7c6ff7" opacity="0.3"/>
+  <circle cx="96" cy="32" r="3" fill="#7c6ff7" opacity="0.3"/>
+  <circle cx="32" cy="96" r="3" fill="#7c6ff7" opacity="0.3"/>
+  <circle cx="96" cy="96" r="3" fill="#7c6ff7" opacity="0.3"/>
+  <line x1="32" y1="32" x2="54" y2="84" stroke="#7c6ff7" stroke-width="1" opacity="0.15"/>
+  <line x1="96" y1="32" x2="74" y2="84" stroke="#7c6ff7" stroke-width="1" opacity="0.15"/>
+</svg>

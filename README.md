@@ -104,7 +104,12 @@ agentos/
 │       ├── openclaw.defaults.json  # Default agent config
 │       └── env.template            # Environment variable template
 ├── Makefile                  # Build convenience targets
-├── branding/                 # Plymouth theme, wallpaper, icons (Phase 4)
+├── branding/
+│   ├── plymouth/             # Boot splash theme + asset generator
+│   ├── grub/                 # Bootloader theme + asset generator
+│   ├── wallpapers/           # Desktop wallpapers (light + dark SVG)
+│   ├── icons/                # App icon, favicon (SVG)
+│   └── welcome/              # HTML welcome app (getting started guide)
 ├── docs/                     # User-facing documentation
 └── README.md
 ```
@@ -125,7 +130,7 @@ AgentOS follows the principle of **least privilege for autonomous agents**:
 - [x] Phase 1: Bootable VM image with OpenClaw pre-configured
 - [x] Phase 2: AppArmor + credential vault + audit logging
 - [x] Phase 3: First-run setup wizard with channel pairing
-- [ ] Phase 4: Branding (Plymouth, GRUB, wallpaper, welcome app)
+- [x] Phase 4: Branding (Plymouth, GRUB, wallpaper, welcome app)
 - [ ] Phase 5: Server edition (headless, no desktop)
 - [ ] Phase 6: Dev edition (SDK, local model support)
 - [ ] Future: Bootable ISO for bare-metal installation

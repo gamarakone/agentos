@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#08061a"/>
+      <stop offset="50%" stop-color="#0f0c29"/>
+      <stop offset="100%" stop-color="#141230"/>
+    </linearGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#ffffff" stroke-width="0.2" opacity="0.03"/>
+    </pattern>
+  </defs>
+
+  <!-- Darker base -->
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+
+  <!-- Grid overlay -->
+  <rect width="1920" height="1080" fill="url(#grid)"/>
+
+  <!-- Minimal accent -->
+  <line x1="0" y1="540" x2="300" y2="540" stroke="#7c6ff7" stroke-width="0.5" opacity="0.1"/>
+  <line x1="1620" y1="540" x2="1920" y2="540" stroke="#7c6ff7" stroke-width="0.5" opacity="0.1"/>
+
+  <!-- Very subtle logo -->
+  <text x="960" y="510" text-anchor="middle" fill="#ffffff" font-family="sans-serif"
+        font-size="56" font-weight="200" letter-spacing="10" opacity="0.06">AgentOS</text>
+</svg>
