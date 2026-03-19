@@ -1,0 +1,18 @@
+{
+    "type": "telegram",
+    "enabled": true,
+    "bot_name": "",
+    "token_ref": "TELEGRAM_BOT_TOKEN",
+    "webhook": {
+        "enabled": false,
+        "url": "",
+        "secret": ""
+    },
+    "settings": {
+        "parse_mode": "Markdown",
+        "allowed_users": [],
+        "allowed_groups": [],
+        "max_message_length": 4096
+    },
+    "created": ""
+}

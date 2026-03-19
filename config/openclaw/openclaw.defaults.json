@@ -22,6 +22,7 @@
         "audit": true,
         "audit_path": "/var/log/agentos/audit.log"
     },
+    "channels": [],
     "skills": {
         "directory": "/opt/agentos/skills",
         "auto_discover": true

@@ -96,6 +96,10 @@ agentos/
 │   │   └── agentos.rules          # auditd rules for agent activity
 │   ├── logrotate/
 │   │   └── agentos                # Log rotation policy
+│   ├── channels/
+│   │   ├── telegram.example.json   # Telegram channel template
+│   │   ├── discord.example.json    # Discord channel template
+│   │   └── slack.example.json      # Slack channel template
 │   └── openclaw/
 │       ├── openclaw.defaults.json  # Default agent config
 │       └── env.template            # Environment variable template
@@ -120,7 +124,7 @@ AgentOS follows the principle of **least privilege for autonomous agents**:
 - [x] Project scaffold and build scripts
 - [x] Phase 1: Bootable VM image with OpenClaw pre-configured
 - [x] Phase 2: AppArmor + credential vault + audit logging
-- [ ] Phase 3: First-run setup wizard with channel pairing
+- [x] Phase 3: First-run setup wizard with channel pairing
 - [ ] Phase 4: Branding (Plymouth, GRUB, wallpaper, welcome app)
 - [ ] Phase 5: Server edition (headless, no desktop)
 - [ ] Phase 6: Dev edition (SDK, local model support)

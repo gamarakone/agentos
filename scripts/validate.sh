@@ -169,7 +169,7 @@ echo ""
 
 # ── Verify CLI tools ─────────────────────────────────────────────
 echo "CLI tools:"
-for tool in agentos-vault.sh agentos-audit.sh; do
+for tool in agentos-vault.sh agentos-audit.sh agentos-pair.sh; do
     if [[ -f "${SCRIPT_DIR}/${tool}" ]]; then
         pass "$tool exists"
         if [[ -x "${SCRIPT_DIR}/${tool}" ]]; then
@@ -179,6 +179,24 @@ for tool in agentos-vault.sh agentos-audit.sh; do
         fi
     else
         fail "$tool missing"
+    fi
+done
+echo ""
+
+# ── Verify channel config templates ────────────────────────────────
+echo "Channel templates:"
+for ch in telegram discord slack; do
+    if [[ -f "${PROJECT_ROOT}/config/channels/${ch}.example.json" ]]; then
+        pass "${ch}.example.json exists"
+        if command -v python3 &>/dev/null; then
+            if python3 -m json.tool "${PROJECT_ROOT}/config/channels/${ch}.example.json" >/dev/null 2>&1; then
+                pass "${ch}.example.json is valid JSON"
+            else
+                fail "${ch}.example.json is invalid JSON"
+            fi
+        fi
+    else
+        fail "${ch}.example.json missing"
     fi
 done
 echo ""

@@ -155,6 +155,25 @@ if [[ -f "${ROOTFS}/opt/agentos/bin/agentos-audit" ]]; then
 else
     fail "agentos-audit CLI missing"
 fi
+if [[ -f "${ROOTFS}/opt/agentos/bin/agentos-pair" ]]; then
+    pass "agentos-pair CLI installed"
+else
+    fail "agentos-pair CLI missing"
+fi
+echo ""
+
+# ── Channel pairing infrastructure ───────────────────────────────
+echo "Channel pairing:"
+if [[ -d "${ROOTFS}/home/agentos/.openclaw/channels" ]]; then
+    pass "Channels directory exists"
+else
+    fail "Channels directory missing"
+fi
+if [[ -d "${ROOTFS}/opt/agentos/share/channel-examples" ]]; then
+    pass "Channel example configs installed"
+else
+    fail "Channel example configs missing"
+fi
 echo ""
 
 # ── Setup wizard ──────────────────────────────────────────────────

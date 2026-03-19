@@ -1,0 +1,15 @@
+{
+    "type": "discord",
+    "enabled": true,
+    "bot_name": "",
+    "token_ref": "DISCORD_BOT_TOKEN",
+    "settings": {
+        "command_prefix": "!agent",
+        "allowed_guilds": [],
+        "allowed_channels": [],
+        "respond_to_mentions": true,
+        "respond_to_dms": true,
+        "max_message_length": 2000
+    },
+    "created": ""
+}

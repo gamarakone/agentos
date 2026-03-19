@@ -118,6 +118,25 @@ cp "${PROJECT_ROOT}/scripts/agentos-audit.sh" \
 chroot "${ROOTFS}" chmod +x /opt/agentos/bin/agentos-audit
 chroot "${ROOTFS}" ln -sf /opt/agentos/bin/agentos-audit /usr/local/bin/agentos-audit
 
+# ── Channel pairing CLI ──────────────────────────────────────────
+log "Installing channel pairing CLI..."
+cp "${PROJECT_ROOT}/scripts/agentos-pair.sh" \
+   "${ROOTFS}/opt/agentos/bin/agentos-pair"
+chroot "${ROOTFS}" chmod +x /opt/agentos/bin/agentos-pair
+chroot "${ROOTFS}" ln -sf /opt/agentos/bin/agentos-pair /usr/local/bin/agentos-pair
+
+# Create channels directory for runtime config
+mkdir -p "${ROOTFS}/home/agentos/.openclaw/channels"
+chroot "${ROOTFS}" chown -R agentos:agentos /home/agentos/.openclaw/channels
+
+# Install example channel configs for reference
+cp "${PROJECT_ROOT}/config/channels/"*.example.json \
+   "${ROOTFS}/opt/agentos/share/channel-examples/" 2>/dev/null || {
+    mkdir -p "${ROOTFS}/opt/agentos/share/channel-examples"
+    cp "${PROJECT_ROOT}/config/channels/"*.example.json \
+       "${ROOTFS}/opt/agentos/share/channel-examples/"
+}
+
 # ── Environment file and default OpenClaw config ──────────────────
 log "Installing environment template and default config..."
 cp "${PROJECT_ROOT}/config/openclaw/env.template" "${ROOTFS}/etc/agentos/env"

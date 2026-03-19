@@ -1,0 +1,21 @@
+{
+    "type": "slack",
+    "enabled": true,
+    "bot_name": "",
+    "token_ref": "SLACK_BOT_TOKEN",
+    "settings": {
+        "respond_to_mentions": true,
+        "respond_to_dms": true,
+        "allowed_channels": [],
+        "max_message_length": 40000,
+        "signing_secret_ref": ""
+    },
+    "scopes": [
+        "chat:write",
+        "app_mentions:read",
+        "im:history",
+        "im:read",
+        "im:write"
+    ],
+    "created": ""
+}
