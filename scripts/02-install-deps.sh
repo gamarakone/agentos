@@ -36,10 +36,15 @@ chroot "${ROOTFS}" bash -c '
     systemctl enable docker
     systemctl enable containerd
 
-    # Add agentos and human user to docker group for sandbox execution
+    # Add agentos service user to docker group for sandbox execution
     usermod -aG docker agentos
-    usermod -aG docker user
 '
+# Add the human user to docker group (varies by edition)
+if [[ "$EDITION" == "--server" ]]; then
+    chroot "${ROOTFS}" usermod -aG docker admin
+else
+    chroot "${ROOTFS}" usermod -aG docker user
+fi
 ok "Docker installed"
 
 # ── Install OpenClaw ───────────────────────────────────────────────
@@ -69,13 +74,23 @@ chroot "${ROOTFS}" apt-get install -y --no-install-recommends \
 
 ok "Utility packages installed"
 
-# ── Install Chromium for browser automation ────────────────────────
-log "Installing Chromium for browser automation skills..."
-chroot "${ROOTFS}" bash -c '
-    apt-get install -y --no-install-recommends chromium-browser || \
-    apt-get install -y --no-install-recommends chromium || \
-    echo "WARN: Chromium not available, browser skills will need manual setup"
-'
+# ── Install Chromium for browser automation (Lite only) ───────────
+if [[ "$EDITION" != "--server" ]]; then
+    log "Installing Chromium for browser automation skills..."
+    chroot "${ROOTFS}" bash -c '
+        apt-get install -y --no-install-recommends chromium-browser || \
+        apt-get install -y --no-install-recommends chromium || \
+        echo "WARN: Chromium not available, browser skills will need manual setup"
+    '
+fi
+
+# ── Install cloud-init for server provisioning (Server only) ──────
+if [[ "$EDITION" == "--server" ]]; then
+    log "Installing cloud-init for server provisioning..."
+    chroot "${ROOTFS}" apt-get install -y --no-install-recommends \
+        cloud-init \
+        cloud-guest-utils
+fi
 
 # ── Clean up apt cache ─────────────────────────────────────────────
 log "Cleaning apt cache..."

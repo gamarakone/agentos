@@ -18,12 +18,12 @@ AgentOS is a pre-configured VM image (OVA/QCOW2) that turns any virtualization p
 | Edition | Who it's for | What ships |
 |---------|-------------|------------|
 | **Lite** (this repo) | Anyone who wants an AI agent appliance | GNOME desktop + OpenClaw + setup wizard |
-| **Server** (planned) | Headless / cloud deployments | Minimal + systemd gateway + API |
+| **Server** (this repo) | Headless / cloud deployments | Minimal + systemd gateway + cloud-init |
 | **Dev** (planned) | Agent developers | CLI-first + SDK + local model runtime |
 
 ## Quick start
 
-### Option 1: VirtualBox / UTM / VMware
+### Option 1: VirtualBox / UTM / VMware (Lite edition)
 ```bash
 # Download the latest OVA
 curl -LO https://github.com/SecureAgentOS/agentos/releases/latest/download/agentos-lite.ova
@@ -33,12 +33,31 @@ VBoxManage import agentos-lite.ova
 VBoxManage startvm agentos-lite
 ```
 
-### Option 2: Build from scratch
+### Option 2: QEMU/KVM headless (Server edition)
+```bash
+# Download the server QCOW2
+curl -LO https://github.com/SecureAgentOS/agentos/releases/latest/download/agentos-server.qcow2
+
+# Configure the agent before first boot
+cat > /tmp/setup.conf <<'EOF'
+AGENTOS_PROVIDER=anthropic
+AGENTOS_API_KEY=sk-ant-...
+AGENTOS_AGENT_NAME=Atlas
+AGENTOS_CHANNEL=skip
+EOF
+
+# Boot with serial console
+qemu-system-x86_64 -hda agentos-server.qcow2 -m 2048 -enable-kvm \
+  -nographic -serial mon:stdio
+```
+
+### Option 3: Build from scratch
 ```bash
 git clone https://github.com/SecureAgentOS/agentos.git
 cd agentos
-make validate   # Check config before building
-make build      # Build the Lite edition (requires Ubuntu 24.04 + sudo)
+make validate        # Check config before building
+make build           # Build the Lite edition (requires Ubuntu 24.04 + sudo)
+make build-server    # Build the Server edition
 ```
 
 The build script requires Ubuntu 24.04 as the host (or any Debian-based system with debootstrap).
@@ -114,6 +133,37 @@ agentos/
 └── README.md
 ```
 
+## Server edition
+
+The Server edition is a headless, cloud-ready variant — no GNOME desktop, no Plymouth splash, no Chromium. It's designed for always-on deployments on VMs, VPS, or cloud instances.
+
+**Key differences from Lite:**
+
+| Feature | Lite | Server |
+|---------|------|--------|
+| Desktop (GNOME) | Yes | No |
+| Gateway bind | `127.0.0.1` | `0.0.0.0` |
+| Execution policy | `ask` | `auto` |
+| Setup wizard | Interactive TUI | Config-file / cloud-init |
+| Serial console | No | Yes (`ttyS0,115200`) |
+| Cloud image | No | `.raw.gz` (AWS/GCP/Azure) |
+| Health endpoint | No | Port 8080 |
+| Chromium | Yes | No |
+| cloud-init | No | Yes |
+
+**Non-interactive setup:** Place `/etc/agentos/setup.conf` on the VM before first boot (or via cloud-init user-data):
+
+```bash
+AGENTOS_PROVIDER=anthropic
+AGENTOS_API_KEY=sk-ant-...
+AGENTOS_AGENT_NAME=Atlas
+AGENTOS_CHANNEL=skip
+```
+
+The setup service runs on first boot, reads the config, and marks setup complete. On subsequent boots it is a no-op.
+
+**Health check:** `curl http://<vm-ip>:8080` returns `200 OK` when the gateway is running, `503 DOWN` otherwise. Use this for load balancer health checks.
+
 ## Security model
 
 AgentOS follows the principle of **least privilege for autonomous agents**:
@@ -131,7 +181,7 @@ AgentOS follows the principle of **least privilege for autonomous agents**:
 - [x] Phase 2: AppArmor + credential vault + audit logging
 - [x] Phase 3: First-run setup wizard with channel pairing
 - [x] Phase 4: Branding (Plymouth, GRUB, wallpaper, welcome app)
-- [ ] Phase 5: Server edition (headless, no desktop)
+- [x] Phase 5: Server edition (headless, cloud-ready, non-interactive setup)
 - [ ] Phase 6: Dev edition (SDK, local model support)
 - [ ] Future: Bootable ISO for bare-metal installation
 

@@ -146,12 +146,71 @@ chroot "${ROOTFS}" chown agentos:agentos /home/agentos/.openclaw/openclaw.json
 
 chroot "${ROOTFS}" chmod 600 /etc/agentos/env
 
+# ── Server-specific config overrides ──────────────────────────────
+if [[ "$EDITION" == "--server" ]]; then
+    log "Applying server edition config overrides..."
+    # Bind gateway to all interfaces (not just localhost)
+    sed -i 's/^OPENCLAW_GATEWAY_HOST=127\.0\.0\.1/OPENCLAW_GATEWAY_HOST=0.0.0.0/' \
+        "${ROOTFS}/etc/agentos/env"
+    # Use auto execution policy (no interactive approval on headless server)
+    sed -i 's/^OPENCLAW_EXECUTION_POLICY=ask/OPENCLAW_EXECUTION_POLICY=auto/' \
+        "${ROOTFS}/etc/agentos/env"
+    # Update the default OpenClaw JSON config to match
+    sed -i 's/"host": "127\.0\.0\.1"/"host": "0.0.0.0"/' \
+        "${ROOTFS}/home/agentos/.openclaw/openclaw.json"
+    sed -i 's/"execution_policy": "ask"/"execution_policy": "auto"/' \
+        "${ROOTFS}/home/agentos/.openclaw/openclaw.json"
+fi
+
 # ── Enable services ────────────────────────────────────────────────
 log "Enabling systemd services..."
 chroot "${ROOTFS}" systemctl enable agentos-gateway.service
 chroot "${ROOTFS}" systemctl enable agentos-broker.service
 chroot "${ROOTFS}" systemctl enable apparmor.service
 chroot "${ROOTFS}" systemctl enable auditd.service
+
+# ── Server: health check endpoint + cloud-init ────────────────────
+if [[ "$EDITION" == "--server" ]]; then
+    log "Installing health check endpoint..."
+
+    cat > "${ROOTFS}/opt/agentos/bin/healthcheck.sh" <<'HEALTHCHECK'
+#!/usr/bin/env bash
+# AgentOS health check HTTP endpoint
+# Listens on port 8080 and returns 200 OK when the gateway is running.
+set -euo pipefail
+
+PORT=8080
+
+while true; do
+    if systemctl is-active --quiet agentos-gateway 2>/dev/null; then
+        STATUS="200 OK"
+        BODY="OK"
+    else
+        STATUS="503 Service Unavailable"
+        BODY="DOWN"
+    fi
+    printf 'HTTP/1.1 %s\r\nContent-Length: %d\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n%s' \
+        "$STATUS" "${#BODY}" "$BODY" \
+        | socat - "TCP-LISTEN:${PORT},reuseaddr" 2>/dev/null || true
+done
+HEALTHCHECK
+
+    chroot "${ROOTFS}" chmod +x /opt/agentos/bin/healthcheck.sh
+
+    cp "${PROJECT_ROOT}/config/systemd/agentos-healthcheck.service" \
+       "${ROOTFS}/etc/systemd/system/agentos-healthcheck.service"
+    chroot "${ROOTFS}" systemctl enable agentos-healthcheck.service
+
+    log "Enabling cloud-init services..."
+    chroot "${ROOTFS}" systemctl enable cloud-init-local.service || true
+    chroot "${ROOTFS}" systemctl enable cloud-init.service || true
+    chroot "${ROOTFS}" systemctl enable cloud-config.service || true
+    chroot "${ROOTFS}" systemctl enable cloud-final.service || true
+
+    # Install setup.conf example for operator reference
+    cp "${PROJECT_ROOT}/config/cloud-init/setup.conf.example" \
+       "${ROOTFS}/etc/agentos/setup.conf.example"
+fi
 
 # ── Install socat for credential broker ────────────────────────────
 chroot "${ROOTFS}" apt-get update

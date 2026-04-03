@@ -9,14 +9,22 @@ on:
   workflow_dispatch:
 
 env:
-  VM_NAME: agentos-lite
   UBUNTU_RELEASE: noble
 
 jobs:
   build:
-    name: Build VM Image
+    name: Build ${{ matrix.edition }} Image
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - edition: lite
+            vm_name: agentos-lite
+            flag: --lite
+          - edition: server
+            vm_name: agentos-server
+            flag: --server
 
     steps:
       - name: Checkout
@@ -41,30 +49,38 @@ jobs:
 
       - name: Build VM image
         run: |
-          sudo ./scripts/build-vm.sh --lite
+          sudo ./scripts/build-vm.sh ${{ matrix.flag }}
 
       - name: Run smoke tests
         run: |
-          sudo ./scripts/smoke-test.sh /tmp/agentos-build/rootfs
+          sudo EDITION=${{ matrix.flag }} ./scripts/smoke-test.sh /tmp/agentos-build/rootfs
 
       - name: Upload QCOW2 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.VM_NAME }}-qcow2
-          path: /tmp/agentos-build/output/${{ env.VM_NAME }}.qcow2
+          name: ${{ matrix.vm_name }}-qcow2
+          path: /tmp/agentos-build/output/${{ matrix.vm_name }}.qcow2
           compression-level: 0  # Already compressed
 
       - name: Upload OVA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.VM_NAME }}-ova
-          path: /tmp/agentos-build/output/${{ env.VM_NAME }}.ova
+          name: ${{ matrix.vm_name }}-ova
+          path: /tmp/agentos-build/output/${{ matrix.vm_name }}.ova
+          compression-level: 0
+
+      - name: Upload raw cloud image (Server only)
+        if: matrix.edition == 'server'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.vm_name }}-raw
+          path: /tmp/agentos-build/output/${{ matrix.vm_name }}.raw.gz
           compression-level: 0
 
       - name: Upload checksums
         uses: actions/upload-artifact@v4
         with:
-          name: checksums
+          name: checksums-${{ matrix.edition }}
           path: /tmp/agentos-build/output/SHA256SUMS
 
   release:
@@ -85,15 +101,23 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/${{ env.VM_NAME }}-qcow2/${{ env.VM_NAME }}.qcow2
-            artifacts/${{ env.VM_NAME }}-ova/${{ env.VM_NAME }}.ova
-            artifacts/checksums/SHA256SUMS
+            artifacts/agentos-lite-qcow2/agentos-lite.qcow2
+            artifacts/agentos-lite-ova/agentos-lite.ova
+            artifacts/agentos-server-qcow2/agentos-server.qcow2
+            artifacts/agentos-server-ova/agentos-server.ova
+            artifacts/agentos-server-raw/agentos-server.raw.gz
+            artifacts/checksums-lite/SHA256SUMS
+            artifacts/checksums-server/SHA256SUMS
           body: |
             ## AgentOS ${{ github.ref_name }}
 
-            Ubuntu-based VM image with OpenClaw pre-configured for AI automation.
+            Ubuntu-based VM images with OpenClaw pre-configured for AI automation.
+            Two editions are available: **Lite** (GNOME desktop) and **Server** (headless, cloud-ready).
 
-            ### Quick start
+            ---
+
+            ### Lite Edition (Desktop)
+
             ```bash
             # VirtualBox
             VBoxManage import agentos-lite.ova
@@ -103,16 +127,34 @@ jobs:
             qemu-system-x86_64 -hda agentos-lite.qcow2 -m 4096 -enable-kvm
             ```
 
-            ### Default credentials
-            - Username: `user`
-            - Password: `agentos` (you'll be prompted to change on first login)
+            **Default credentials:** Username `user`, password `agentos` (change on first login)
+
+            ---
+
+            ### Server Edition (Headless / Cloud)
+
+            ```bash
+            # QEMU/KVM (with serial console)
+            qemu-system-x86_64 -hda agentos-server.qcow2 -m 2048 -enable-kvm \
+              -nographic -serial mon:stdio
+
+            # Cloud import (AWS/GCP/Azure)
+            # Use agentos-server.raw.gz — decompress then import as a custom image
+            gunzip agentos-server.raw.gz
+            ```
+
+            Provision the agent non-interactively by placing `/etc/agentos/setup.conf`
+            (see `setup.conf.example` in the release) or via cloud-init user-data.
+
+            **Default credentials:** Username `admin`, SSH key auth only (provision via cloud-init)
+
+            ---
 
             ### What's included
             - Ubuntu 24.04 LTS (Noble Numbat)
             - OpenClaw agent framework (latest)
             - Node.js 22 + Docker
-            - GNOME desktop (Lite edition)
-            - AppArmor security profiles
-            - First-run setup wizard
+            - AppArmor security profiles + audit logging
+            - Credential vault + channel pairing
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}

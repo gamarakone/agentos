@@ -21,7 +21,11 @@ EDITION="${1:---lite}"  # --lite or --server
 OUTPUT_FORMAT="${2:-both}"  # ova, qcow2, or both
 
 DISK_SIZE="20G"
-VM_NAME="agentos-lite"
+if [[ "$EDITION" == "--server" ]]; then
+    VM_NAME="agentos-server"
+else
+    VM_NAME="agentos-lite"
+fi
 VM_RAM="4096"
 VM_CPUS="2"
 
@@ -110,7 +114,7 @@ main() {
     echo "  ╔═══════════════════════════════════════════╗"
     echo "  ║         AgentOS VM Image Builder          ║"
     echo "  ║         v${AGENTOS_VERSION}                       ║"
-    echo "  ║         Edition: ${EDITION}                     ║"
+    printf "  ║         Edition: %-25s║\n" "${EDITION}  "
     echo "  ╚═══════════════════════════════════════════╝"
     echo ""
 

@@ -1,0 +1,21 @@
+[Unit]
+Description=AgentOS Health Check Endpoint
+Documentation=https://github.com/SecureAgentOS/agentos
+After=agentos-gateway.service
+Wants=agentos-gateway.service
+
+[Service]
+Type=simple
+ExecStart=/opt/agentos/bin/healthcheck.sh
+Restart=on-failure
+RestartSec=5
+User=agentos
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

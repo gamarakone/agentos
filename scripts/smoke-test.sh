@@ -8,6 +8,7 @@
 set -euo pipefail
 
 ROOTFS="${1:-/tmp/agentos-build/rootfs}"
+EDITION="${EDITION:---lite}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,7 +20,8 @@ fail() { echo -e "  ${RED}FAIL${NC}  $*"; ERRORS=$((ERRORS + 1)); }
 
 echo "AgentOS Smoke Test"
 echo "==================="
-echo "Rootfs: ${ROOTFS}"
+echo "Rootfs:  ${ROOTFS}"
+echo "Edition: ${EDITION}"
 echo ""
 
 if [[ ! -d "$ROOTFS" ]]; then
@@ -34,10 +36,18 @@ if grep -q 'agentos:.*:1100:' "${ROOTFS}/etc/passwd"; then
 else
     fail "agentos user missing"
 fi
-if grep -q 'user:.*:1000:' "${ROOTFS}/etc/passwd"; then
-    pass "user account (uid 1000) exists"
+if [[ "$EDITION" == "--server" ]]; then
+    if grep -q 'admin:.*:1000:' "${ROOTFS}/etc/passwd"; then
+        pass "admin account (uid 1000) exists"
+    else
+        fail "admin account missing"
+    fi
 else
-    fail "user account missing"
+    if grep -q 'user:.*:1000:' "${ROOTFS}/etc/passwd"; then
+        pass "user account (uid 1000) exists"
+    else
+        fail "user account missing"
+    fi
 fi
 echo ""
 
@@ -190,44 +200,90 @@ else
 fi
 echo ""
 
-# ── Branding ──────────────────────────────────────────────────────
-echo "Branding:"
-if [[ -d "${ROOTFS}/usr/share/plymouth/themes/agentos" ]]; then
-    pass "Plymouth theme installed"
-else
-    fail "Plymouth theme missing"
-fi
-if [[ -d "${ROOTFS}/boot/grub/themes/agentos" ]]; then
-    pass "GRUB theme installed"
-    if [[ -f "${ROOTFS}/boot/grub/themes/agentos/theme.txt" ]]; then
-        pass "GRUB theme.txt present"
+# ── Branding (Lite only) ──────────────────────────────────────────
+if [[ "$EDITION" != "--server" ]]; then
+    echo "Branding:"
+    if [[ -d "${ROOTFS}/usr/share/plymouth/themes/agentos" ]]; then
+        pass "Plymouth theme installed"
     else
-        fail "GRUB theme.txt missing"
+        fail "Plymouth theme missing"
     fi
-else
-    fail "GRUB theme missing"
+    if [[ -d "${ROOTFS}/boot/grub/themes/agentos" ]]; then
+        pass "GRUB theme installed"
+        if [[ -f "${ROOTFS}/boot/grub/themes/agentos/theme.txt" ]]; then
+            pass "GRUB theme.txt present"
+        else
+            fail "GRUB theme.txt missing"
+        fi
+    else
+        fail "GRUB theme missing"
+    fi
+    if [[ -f "${ROOTFS}/usr/share/backgrounds/agentos-wallpaper.svg" ]]; then
+        pass "Wallpapers installed"
+    else
+        fail "Wallpapers missing"
+    fi
+    if [[ -f "${ROOTFS}/usr/share/icons/hicolor/scalable/apps/agentos.svg" ]]; then
+        pass "Application icon installed"
+    else
+        fail "Application icon missing"
+    fi
+    if [[ -f "${ROOTFS}/opt/agentos/share/welcome/index.html" ]]; then
+        pass "Welcome app installed"
+    else
+        fail "Welcome app missing"
+    fi
+    if [[ -f "${ROOTFS}/usr/share/applications/agentos-welcome.desktop" ]]; then
+        pass "Welcome desktop entry installed"
+    else
+        fail "Welcome desktop entry missing"
+    fi
+    echo ""
 fi
-if [[ -f "${ROOTFS}/usr/share/backgrounds/agentos-wallpaper.svg" ]]; then
-    pass "Wallpapers installed"
-else
-    fail "Wallpapers missing"
+
+# ── Server configuration (Server only) ──────────────────────────
+if [[ "$EDITION" == "--server" ]]; then
+    echo "Server configuration:"
+    if grep -q 'OPENCLAW_GATEWAY_HOST=0\.0\.0\.0' "${ROOTFS}/etc/agentos/env" 2>/dev/null; then
+        pass "Gateway binds 0.0.0.0 (all interfaces)"
+    else
+        fail "Gateway not configured to bind 0.0.0.0"
+    fi
+    if grep -q 'OPENCLAW_EXECUTION_POLICY=auto' "${ROOTFS}/etc/agentos/env" 2>/dev/null; then
+        pass "Execution policy is auto (non-interactive)"
+    else
+        fail "Execution policy not set to auto"
+    fi
+    if grep -q 'console=ttyS0' "${ROOTFS}/etc/default/grub" 2>/dev/null; then
+        pass "Serial console configured in GRUB"
+    else
+        fail "Serial console not configured in GRUB"
+    fi
+    if [[ -d "${ROOTFS}/etc/cloud" ]] || \
+       grep -q 'cloud-init' "${ROOTFS}/etc/apt/dpkg.list" 2>/dev/null || \
+       [[ -f "${ROOTFS}/usr/bin/cloud-init" ]] || \
+       [[ -f "${ROOTFS}/usr/sbin/cloud-init" ]]; then
+        pass "cloud-init installed"
+    else
+        fail "cloud-init missing"
+    fi
+    if [[ -f "${ROOTFS}/etc/systemd/system/agentos-healthcheck.service" ]]; then
+        pass "Health check service installed"
+    else
+        fail "Health check service missing"
+    fi
+    if [[ -f "${ROOTFS}/opt/agentos/bin/healthcheck.sh" ]]; then
+        pass "healthcheck.sh installed"
+    else
+        fail "healthcheck.sh missing"
+    fi
+    if [[ -f "${ROOTFS}/etc/systemd/system/agentos-setup.service" ]]; then
+        pass "First-boot setup service installed"
+    else
+        fail "First-boot setup service missing"
+    fi
+    echo ""
 fi
-if [[ -f "${ROOTFS}/usr/share/icons/hicolor/scalable/apps/agentos.svg" ]]; then
-    pass "Application icon installed"
-else
-    fail "Application icon missing"
-fi
-if [[ -f "${ROOTFS}/opt/agentos/share/welcome/index.html" ]]; then
-    pass "Welcome app installed"
-else
-    fail "Welcome app missing"
-fi
-if [[ -f "${ROOTFS}/usr/share/applications/agentos-welcome.desktop" ]]; then
-    pass "Welcome desktop entry installed"
-else
-    fail "Welcome desktop entry missing"
-fi
-echo ""
 
 # ── Bootloader ────────────────────────────────────────────────────
 echo "Boot:"

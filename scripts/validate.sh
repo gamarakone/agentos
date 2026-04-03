@@ -49,6 +49,9 @@ for cfg in \
     config/apparmor/agentos-broker \
     config/systemd/agentos-gateway.service \
     config/systemd/agentos-broker.service \
+    config/systemd/agentos-healthcheck.service \
+    config/cloud-init/99-agentos.cfg \
+    config/cloud-init/setup.conf.example \
     config/openclaw/openclaw.defaults.json \
     config/openclaw/env.template \
     config/audit/agentos.rules \

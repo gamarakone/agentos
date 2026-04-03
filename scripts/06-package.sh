@@ -68,8 +68,20 @@ EOF
 # Install GRUB
 chroot "${MOUNT_POINT}" grub-install --target=i386-pc "$LOOP_DEV"
 
-# Configure GRUB with AgentOS theme
-cat > "${MOUNT_POINT}/etc/default/grub" <<'GRUB'
+# Configure GRUB (varies by edition)
+if [[ "$EDITION" == "--server" ]]; then
+    cat > "${MOUNT_POINT}/etc/default/grub" <<'GRUB'
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=3
+GRUB_DISTRIBUTOR="AgentOS"
+GRUB_CMDLINE_LINUX_DEFAULT="console=tty0 console=ttyS0,115200n8"
+GRUB_CMDLINE_LINUX=""
+GRUB_DISABLE_OS_PROBER=true
+GRUB_TERMINAL="serial console"
+GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
+GRUB
+else
+    cat > "${MOUNT_POINT}/etc/default/grub" <<'GRUB'
 GRUB_DEFAULT=0
 GRUB_TIMEOUT=3
 GRUB_DISTRIBUTOR="AgentOS"
@@ -78,6 +90,7 @@ GRUB_CMDLINE_LINUX=""
 GRUB_DISABLE_OS_PROBER=true
 GRUB_THEME=/boot/grub/themes/agentos/theme.txt
 GRUB
+fi
 
 chroot "${MOUNT_POINT}" update-grub
 
@@ -191,6 +204,14 @@ cd -
 
 ok "OVA image: ${OVA_FILE} ($(du -h "$OVA_FILE" | cut -f1))"
 
+# ── Compressed raw image for cloud import (Server only) ──────────
+if [[ "$EDITION" == "--server" ]]; then
+    RAW_GZ="${OUTPUT_DIR}/${VM_NAME}.raw.gz"
+    log "Creating compressed raw image for cloud import (AWS/GCP/Azure)..."
+    gzip -k -c "$RAW_DISK" > "$RAW_GZ"
+    ok "Raw cloud image: ${RAW_GZ} ($(du -h "$RAW_GZ" | cut -f1))"
+fi
+
 # ── Clean up raw disk ─────────────────────────────────────────────
 log "Cleaning up intermediate files..."
 rm -f "$RAW_DISK" "$VMDK_DISK" "${BUILD_DIR}/${VM_NAME}.ovf"
@@ -198,7 +219,11 @@ rm -f "$RAW_DISK" "$VMDK_DISK" "${BUILD_DIR}/${VM_NAME}.ovf"
 # ── Generate checksums ─────────────────────────────────────────────
 log "Generating checksums..."
 cd "${OUTPUT_DIR}"
-sha256sum "${VM_NAME}.qcow2" "${VM_NAME}.ova" > SHA256SUMS
+if [[ "$EDITION" == "--server" ]]; then
+    sha256sum "${VM_NAME}.qcow2" "${VM_NAME}.ova" "${VM_NAME}.raw.gz" > SHA256SUMS
+else
+    sha256sum "${VM_NAME}.qcow2" "${VM_NAME}.ova" > SHA256SUMS
+fi
 cd -
 
 ok "Checksums: ${OUTPUT_DIR}/SHA256SUMS"

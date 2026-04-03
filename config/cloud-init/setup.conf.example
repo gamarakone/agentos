@@ -1,0 +1,33 @@
+# /etc/agentos/setup.conf
+#
+# Non-interactive setup configuration for AgentOS Server edition.
+# Copy this file to /etc/agentos/setup.conf and fill in your values.
+# The setup wizard reads this file on first boot and runs without prompting.
+#
+# This file is typically provisioned via cloud-init user-data, a secrets manager,
+# or baked into a custom AMI/image at deployment time.
+#
+# ── AI Provider ────────────────────────────────────────────────────────────────
+# Which AI provider to use. Options: anthropic, openai, openrouter, ollama
+AGENTOS_PROVIDER=anthropic
+
+# API key for the chosen provider.
+# Anthropic: starts with sk-ant-
+# OpenAI:    starts with sk-
+# OpenRouter: starts with sk-or-
+# Ollama:    leave empty (no key needed)
+AGENTOS_API_KEY=
+
+# ── Agent identity ─────────────────────────────────────────────────────────────
+# Display name for your agent
+AGENTOS_AGENT_NAME=Atlas
+
+# ── Messaging channel (optional) ──────────────────────────────────────────────
+# Options: telegram, discord, slack, skip
+AGENTOS_CHANNEL=skip
+
+# Bot token for the chosen channel (leave empty if channel=skip)
+# Telegram: obtain from @BotFather
+# Discord:  obtain from https://discord.com/developers/applications
+# Slack:    Bot User OAuth Token (starts with xoxb-)
+# AGENTOS_CHANNEL_TOKEN=

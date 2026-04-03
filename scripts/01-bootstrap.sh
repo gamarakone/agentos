@@ -58,10 +58,15 @@ mount --bind /run  "${ROOTFS}/run"
 log "Configuring base system inside chroot..."
 
 # Set hostname
-echo "agentos" > "${ROOTFS}/etc/hostname"
+if [[ "$EDITION" == "--server" ]]; then
+    HOSTNAME_VAL="agentos-server"
+else
+    HOSTNAME_VAL="agentos"
+fi
+echo "$HOSTNAME_VAL" > "${ROOTFS}/etc/hostname"
 cat > "${ROOTFS}/etc/hosts" <<EOF
 127.0.0.1   localhost
-127.0.1.1   agentos
+127.0.1.1   ${HOSTNAME_VAL}
 
 ::1         localhost ip6-localhost ip6-loopback
 ff02::1     ip6-allnodes
@@ -94,19 +99,30 @@ chroot "${ROOTFS}" useradd \
     --comment "AgentOS Service Account" \
     agentos
 
-# Create a default human user for desktop login
+# Create the human user account (differs by edition)
 # Note: docker group is added later in 02-install-deps.sh after Docker is installed
-chroot "${ROOTFS}" useradd \
-    --uid 1000 \
-    --create-home \
-    --shell /bin/bash \
-    --groups sudo \
-    --comment "AgentOS User" \
-    user
-
-# Set default password (user will be prompted to change on first login)
-echo "user:agentos" | chroot "${ROOTFS}" chpasswd
-chroot "${ROOTFS}" chage -d 0 user  # Force password change at first login
+if [[ "$EDITION" == "--server" ]]; then
+    # Server: locked-password admin account; cloud-init provisions SSH keys
+    chroot "${ROOTFS}" useradd \
+        --uid 1000 \
+        --create-home \
+        --shell /bin/bash \
+        --groups sudo \
+        --comment "AgentOS Admin" \
+        admin
+    chroot "${ROOTFS}" passwd -l admin
+else
+    # Lite: desktop user with default password, forced change on first login
+    chroot "${ROOTFS}" useradd \
+        --uid 1000 \
+        --create-home \
+        --shell /bin/bash \
+        --groups sudo \
+        --comment "AgentOS User" \
+        user
+    echo "user:agentos" | chroot "${ROOTFS}" chpasswd
+    chroot "${ROOTFS}" chage -d 0 user  # Force password change at first login
+fi
 
 # ── Create AgentOS directory structure ─────────────────────────────
 log "Creating AgentOS directory structure..."

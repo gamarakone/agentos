@@ -17,6 +17,7 @@ cat > "${ROOTFS}/opt/agentos/bin/setup-wizard.sh" <<'WIZARD'
 set -euo pipefail
 
 SETUP_DONE_FLAG="/home/agentos/.openclaw/.setup-complete"
+SETUP_CONF="/etc/agentos/setup.conf"
 ENV_FILE="/etc/agentos/env"
 VAULT_DIR="/etc/agentos/vault"
 CHANNELS_DIR="/home/agentos/.openclaw/channels"
@@ -26,6 +27,15 @@ LOG="/var/log/agentos/setup.log"
 # Skip if already set up
 if [[ -f "$SETUP_DONE_FLAG" ]]; then
     exit 0
+fi
+
+# ── Non-interactive mode ───────────────────────────────────────────
+# Triggered by /etc/agentos/setup.conf or AGENTOS_NONINTERACTIVE=true.
+# Used by the Server edition for cloud-init / automated provisioning.
+NONINTERACTIVE=false
+if [[ -f "$SETUP_CONF" ]] || [[ "${AGENTOS_NONINTERACTIVE:-}" == "true" ]]; then
+    NONINTERACTIVE=true
+    [[ -f "$SETUP_CONF" ]] && source "$SETUP_CONF"
 fi
 
 # ── Colors and helpers ─────────────────────────────────────────────
@@ -231,32 +241,47 @@ CHCFG
 # ── Step 1: Welcome ───────────────────────────────────────────────
 log_setup "Setup wizard started"
 
-print_header
-echo -e "${BOLD}Let's set up your AI agent. This takes about 2 minutes.${NC}"
-echo ""
-echo "  You'll need:"
-echo "    1. An API key from Anthropic, OpenAI, or OpenRouter"
-echo "    2. (Optional) A messaging channel (Telegram, Discord, Slack)"
-echo ""
-echo -ne "Press ${BOLD}Enter${NC} to begin... "
-read -r
+if [[ "$NONINTERACTIVE" != "true" ]]; then
+    print_header
+    echo -e "${BOLD}Let's set up your AI agent. This takes about 2 minutes.${NC}"
+    echo ""
+    echo "  You'll need:"
+    echo "    1. An API key from Anthropic, OpenAI, or OpenRouter"
+    echo "    2. (Optional) A messaging channel (Telegram, Discord, Slack)"
+    echo ""
+    echo -ne "Press ${BOLD}Enter${NC} to begin... "
+    read -r
+fi
 
 # ── Step 2: Model provider ────────────────────────────────────────
-print_header
-echo -e "${BOLD}Step 1/5: Choose your AI model provider${NC}"
-echo ""
-echo "  1) Anthropic (Claude) — recommended"
-echo "  2) OpenAI (GPT)"
-echo "  3) OpenRouter (multi-provider)"
-echo "  4) Local model via Ollama (no API key needed)"
-echo ""
-prompt PROVIDER_CHOICE "Select provider (1-4)" "1"
-
 API_KEY=""
 KEY_VAR=""
 PROVIDER=""
 
-case "$PROVIDER_CHOICE" in
+if [[ "$NONINTERACTIVE" == "true" ]]; then
+    # Non-interactive: read from setup.conf / env vars
+    PROVIDER="${AGENTOS_PROVIDER:-anthropic}"
+    API_KEY="${AGENTOS_API_KEY:-}"
+    case "$PROVIDER" in
+        anthropic)   KEY_VAR="ANTHROPIC_API_KEY" ;;
+        openai)      KEY_VAR="OPENAI_API_KEY" ;;
+        openrouter)  KEY_VAR="OPENROUTER_API_KEY" ;;
+        ollama)      KEY_VAR="" ;;
+        *)           KEY_VAR="ANTHROPIC_API_KEY"; PROVIDER="anthropic" ;;
+    esac
+    log_setup "Non-interactive provider: ${PROVIDER}"
+else
+    print_header
+    echo -e "${BOLD}Step 1/5: Choose your AI model provider${NC}"
+    echo ""
+    echo "  1) Anthropic (Claude) — recommended"
+    echo "  2) OpenAI (GPT)"
+    echo "  3) OpenRouter (multi-provider)"
+    echo "  4) Local model via Ollama (no API key needed)"
+    echo ""
+    prompt PROVIDER_CHOICE "Select provider (1-4)" "1"
+
+    case "$PROVIDER_CHOICE" in
     1)
         PROVIDER="anthropic"
         echo ""
@@ -330,36 +355,87 @@ case "$PROVIDER_CHOICE" in
         prompt_secret API_KEY "Paste your Anthropic API key"
         KEY_VAR="ANTHROPIC_API_KEY"
         ;;
-esac
+    esac
+fi  # end interactive provider selection
 
 log_setup "Provider selected: ${PROVIDER}"
 
 # ── Step 3: Agent name ─────────────────────────────────────────────
-print_header
-echo -e "${BOLD}Step 2/5: Name your agent${NC}"
-echo ""
-prompt AGENT_NAME "What should your agent be called?" "Atlas"
+if [[ "$NONINTERACTIVE" == "true" ]]; then
+    AGENT_NAME="${AGENTOS_AGENT_NAME:-Atlas}"
+else
+    print_header
+    echo -e "${BOLD}Step 2/5: Name your agent${NC}"
+    echo ""
+    prompt AGENT_NAME "What should your agent be called?" "Atlas"
+fi
 log_setup "Agent named: ${AGENT_NAME}"
 
 # ── Step 4: Messaging channel ──────────────────────────────────────
-print_header
-echo -e "${BOLD}Step 3/5: Connect a messaging channel (optional)${NC}"
-echo ""
-echo "  You can message your agent from any of these platforms:"
-echo ""
-echo "  1) Telegram — easiest to set up"
-echo "  2) Discord"
-echo "  3) Slack"
-echo "  4) Skip for now — I'll use the web dashboard"
-echo ""
-echo -e "  ${CYAN}You can add more channels later with: agentos-pair add${NC}"
-echo ""
-prompt CHANNEL_CHOICE "Select channel (1-4)" "4"
-
 CHANNEL_CONFIG="skip"
 CHANNEL_BOT_NAME=""
 
-case "$CHANNEL_CHOICE" in
+if [[ "$NONINTERACTIVE" == "true" ]]; then
+    # Non-interactive channel setup
+    CHANNEL_CHOICE="${AGENTOS_CHANNEL:-skip}"
+    CHANNEL_TOKEN="${AGENTOS_CHANNEL_TOKEN:-}"
+    case "$CHANNEL_CHOICE" in
+        telegram)
+            if [[ -n "$CHANNEL_TOKEN" ]]; then
+                if BOT_NAME=$(validate_telegram_token "$CHANNEL_TOKEN" 2>/dev/null); then
+                    store_channel_config "telegram" "TELEGRAM_BOT_TOKEN" "$CHANNEL_TOKEN" "$BOT_NAME"
+                    CHANNEL_CONFIG="telegram"
+                    CHANNEL_BOT_NAME="$BOT_NAME"
+                    log_setup "Telegram configured non-interactively"
+                else
+                    log_setup "WARN: Telegram token validation failed, skipping channel"
+                fi
+            fi
+            ;;
+        discord)
+            if [[ -n "$CHANNEL_TOKEN" ]]; then
+                if BOT_NAME=$(validate_discord_token "$CHANNEL_TOKEN" 2>/dev/null); then
+                    store_channel_config "discord" "DISCORD_BOT_TOKEN" "$CHANNEL_TOKEN" "$BOT_NAME"
+                    CHANNEL_CONFIG="discord"
+                    CHANNEL_BOT_NAME="$BOT_NAME"
+                    log_setup "Discord configured non-interactively"
+                else
+                    log_setup "WARN: Discord token validation failed, skipping channel"
+                fi
+            fi
+            ;;
+        slack)
+            if [[ -n "$CHANNEL_TOKEN" ]]; then
+                if BOT_NAME=$(validate_slack_token "$CHANNEL_TOKEN" 2>/dev/null); then
+                    store_channel_config "slack" "SLACK_BOT_TOKEN" "$CHANNEL_TOKEN" "$BOT_NAME"
+                    CHANNEL_CONFIG="slack"
+                    CHANNEL_BOT_NAME="$BOT_NAME"
+                    log_setup "Slack configured non-interactively"
+                else
+                    log_setup "WARN: Slack token validation failed, skipping channel"
+                fi
+            fi
+            ;;
+        *)
+            CHANNEL_CONFIG="skip"
+            ;;
+    esac
+else
+    print_header
+    echo -e "${BOLD}Step 3/5: Connect a messaging channel (optional)${NC}"
+    echo ""
+    echo "  You can message your agent from any of these platforms:"
+    echo ""
+    echo "  1) Telegram — easiest to set up"
+    echo "  2) Discord"
+    echo "  3) Slack"
+    echo "  4) Skip for now — I'll use the web dashboard"
+    echo ""
+    echo -e "  ${CYAN}You can add more channels later with: agentos-pair add${NC}"
+    echo ""
+    prompt CHANNEL_CHOICE "Select channel (1-4)" "4"
+
+    case "$CHANNEL_CHOICE" in
     1)
         echo ""
         echo -e "${BLUE}To set up Telegram:${NC}"
@@ -447,31 +523,36 @@ case "$CHANNEL_CHOICE" in
     *)
         CHANNEL_CONFIG="skip"
         ;;
-esac
+    esac
+fi  # end interactive channel selection
 
 # ── Step 5: Confirmation ──────────────────────────────────────────
-print_header
-echo -e "${BOLD}Step 4/5: Confirm your setup${NC}"
-echo ""
-echo -e "  Provider:  ${GREEN}${PROVIDER}${NC}"
-echo -e "  Agent:     ${GREEN}${AGENT_NAME}${NC}"
-if [[ "$CHANNEL_CONFIG" != "skip" ]]; then
-    echo -e "  Channel:   ${GREEN}${CHANNEL_CONFIG}${NC} (${CHANNEL_BOT_NAME})"
-else
-    echo -e "  Channel:   ${YELLOW}none (use web dashboard)${NC}"
-fi
-echo ""
-prompt CONFIRM "Apply this configuration? (y/n)" "y"
+if [[ "$NONINTERACTIVE" != "true" ]]; then
+    print_header
+    echo -e "${BOLD}Step 4/5: Confirm your setup${NC}"
+    echo ""
+    echo -e "  Provider:  ${GREEN}${PROVIDER}${NC}"
+    echo -e "  Agent:     ${GREEN}${AGENT_NAME}${NC}"
+    if [[ "$CHANNEL_CONFIG" != "skip" ]]; then
+        echo -e "  Channel:   ${GREEN}${CHANNEL_CONFIG}${NC} (${CHANNEL_BOT_NAME})"
+    else
+        echo -e "  Channel:   ${YELLOW}none (use web dashboard)${NC}"
+    fi
+    echo ""
+    prompt CONFIRM "Apply this configuration? (y/n)" "y"
 
-if [[ "${CONFIRM,,}" != "y" ]]; then
-    echo -e "${YELLOW}Setup cancelled. Run /opt/agentos/bin/setup-wizard.sh to try again.${NC}"
-    exit 0
-fi
+    if [[ "${CONFIRM,,}" != "y" ]]; then
+        echo -e "${YELLOW}Setup cancelled. Run /opt/agentos/bin/setup-wizard.sh to try again.${NC}"
+        exit 0
+    fi
+fi  # end interactive confirmation
 
 # ── Step 6: Apply configuration ──────────────────────────────────
-print_header
-echo -e "${BOLD}Step 5/5: Applying configuration...${NC}"
-echo ""
+if [[ "$NONINTERACTIVE" != "true" ]]; then
+    print_header
+    echo -e "${BOLD}Step 5/5: Applying configuration...${NC}"
+    echo ""
+fi
 
 # Write API key to vault
 if [[ -n "$API_KEY" && -n "$KEY_VAR" ]]; then
@@ -525,6 +606,9 @@ if [[ -d "$CHANNELS_DIR" ]]; then
 fi
 
 # Configure OpenClaw
+# Read gateway host and execution policy from env file (may have been overridden at build time)
+GW_HOST=$(grep '^OPENCLAW_GATEWAY_HOST=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "127.0.0.1")
+EXEC_POLICY=$(grep '^OPENCLAW_EXECUTION_POLICY=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "ask")
 sudo -u agentos bash -c "cat > /home/agentos/.openclaw/openclaw.json" <<OCJSON
 {
     "name": "${AGENT_NAME}",
@@ -536,13 +620,13 @@ sudo -u agentos bash -c "cat > /home/agentos/.openclaw/openclaw.json" <<OCJSON
     },
     "gateway": {
         "port": 18789,
-        "host": "127.0.0.1",
+        "host": "${GW_HOST}",
         "auth": "token"
     },
     "channels": ${CHANNELS_JSON},
     "sandbox": {
         "engine": "docker",
-        "execution_policy": "ask"
+        "execution_policy": "${EXEC_POLICY}"
     }
 }
 OCJSON
@@ -555,50 +639,78 @@ echo -e "  ${GREEN}✓${NC} Gateway restarted"
 # Mark setup as complete
 sudo -u agentos touch "$SETUP_DONE_FLAG"
 
-# Disable auto-login after first boot
-sudo sed -i 's/^AutomaticLoginEnable=true/AutomaticLoginEnable=false/' /etc/gdm3/custom.conf 2>/dev/null || true
-
-# Remove autostart entry
-rm -f /etc/xdg/autostart/agentos-wizard.desktop 2>/dev/null || true
+# Disable auto-login and remove autostart entry (desktop only, non-fatal on server)
+if [[ "$NONINTERACTIVE" != "true" ]]; then
+    sudo sed -i 's/^AutomaticLoginEnable=true/AutomaticLoginEnable=false/' /etc/gdm3/custom.conf 2>/dev/null || true
+    rm -f /etc/xdg/autostart/agentos-wizard.desktop 2>/dev/null || true
+fi
 
 log_setup "Setup complete"
 
 # ── Done ───────────────────────────────────────────────────────────
-echo ""
-echo -e "${GREEN}"
-echo "  ╔═══════════════════════════════════════════════════╗"
-echo "  ║                                                   ║"
-echo "  ║           AgentOS is ready!                       ║"
-echo "  ║                                                   ║"
-echo "  ║   Dashboard: http://localhost:18789               ║"
-echo "  ║   Logs:      journalctl -u agentos-gateway -f    ║"
-echo "  ║                                                   ║"
-echo "  ╚═══════════════════════════════════════════════════╝"
-echo -e "${NC}"
+if [[ "$NONINTERACTIVE" == "true" ]]; then
+    echo "[AgentOS] Setup complete. Gateway listening on port 18789."
+    log_setup "Non-interactive setup finished successfully"
+else
+    echo ""
+    echo -e "${GREEN}"
+    echo "  ╔═══════════════════════════════════════════════════╗"
+    echo "  ║                                                   ║"
+    echo "  ║           AgentOS is ready!                       ║"
+    echo "  ║                                                   ║"
+    echo "  ║   Dashboard: http://localhost:18789               ║"
+    echo "  ║   Logs:      journalctl -u agentos-gateway -f    ║"
+    echo "  ║                                                   ║"
+    echo "  ╚═══════════════════════════════════════════════════╝"
+    echo -e "${NC}"
 
-case "$CHANNEL_CONFIG" in
-    telegram)
-        echo -e "  ${GREEN}✓${NC} Telegram bot @${CHANNEL_BOT_NAME} is paired."
-        echo -e "    Send it a message to start chatting with your agent!"
-        ;;
-    discord)
-        echo -e "  ${GREEN}✓${NC} Discord bot ${CHANNEL_BOT_NAME} is paired."
-        echo -e "    Mention the bot in your server to start chatting!"
-        ;;
-    slack)
-        echo -e "  ${GREEN}✓${NC} Slack bot ${CHANNEL_BOT_NAME} is paired."
-        echo -e "    Mention the bot in a channel or DM it to start chatting!"
-        ;;
-    skip)
-        echo -e "  ${CYAN}Tip: Add a messaging channel later with: agentos-pair add${NC}"
-        ;;
-esac
+    case "$CHANNEL_CONFIG" in
+        telegram)
+            echo -e "  ${GREEN}✓${NC} Telegram bot @${CHANNEL_BOT_NAME} is paired."
+            echo -e "    Send it a message to start chatting with your agent!"
+            ;;
+        discord)
+            echo -e "  ${GREEN}✓${NC} Discord bot ${CHANNEL_BOT_NAME} is paired."
+            echo -e "    Mention the bot in your server to start chatting!"
+            ;;
+        slack)
+            echo -e "  ${GREEN}✓${NC} Slack bot ${CHANNEL_BOT_NAME} is paired."
+            echo -e "    Mention the bot in a channel or DM it to start chatting!"
+            ;;
+        skip)
+            echo -e "  ${CYAN}Tip: Add a messaging channel later with: agentos-pair add${NC}"
+            ;;
+    esac
 
-echo ""
-echo -ne "Press ${BOLD}Enter${NC} to close this wizard... "
-read -r
+    echo ""
+    echo -ne "Press ${BOLD}Enter${NC} to close this wizard... "
+    read -r
+fi
 WIZARD
 
 chroot "${ROOTFS}" chmod +x /opt/agentos/bin/setup-wizard.sh
+
+# ── Server: first-boot non-interactive setup service ──────────────
+if [[ "$EDITION" == "--server" ]]; then
+    log "Installing non-interactive first-boot setup service..."
+    cat > "${ROOTFS}/etc/systemd/system/agentos-setup.service" <<'SVCEOF'
+[Unit]
+Description=AgentOS First-Run Setup (non-interactive)
+After=network-online.target cloud-final.service
+Wants=network-online.target
+ConditionPathExists=!/home/agentos/.openclaw/.setup-complete
+
+[Service]
+Type=oneshot
+Environment=AGENTOS_NONINTERACTIVE=true
+ExecStart=/opt/agentos/bin/setup-wizard.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+    chroot "${ROOTFS}" systemctl enable agentos-setup.service
+fi
 
 ok "Setup wizard installed"
